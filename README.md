@@ -12,6 +12,10 @@ Rebatr is a sophisticated web application that orchestrates live debates between
 
 ## Rebatr Demo
 
+
+https://github.com/user-attachments/assets/ee43bd26-f78c-4b89-b9e7-f3c1835ed32e
+
+
 ##  Features
 
 ### **Core Functionality**
