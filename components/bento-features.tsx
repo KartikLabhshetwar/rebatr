@@ -4,7 +4,6 @@ import { Brain, Download, Key, MessageSquare, Trophy, Zap, Users, BarChart3, Clo
 export function BentoFeatures() {
   return (
     <section className="py-20 bg-background">
-      <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-4xl md:text-5xl font-black text-primary">Powerful Features</h2>
@@ -92,53 +91,6 @@ export function BentoFeatures() {
               </div>
             </div>
 
-            {/* Performance Analytics */}
-            <div className="md:col-span-2 lg:col-span-2 bg-card border border-border rounded-lg p-6 card-hover">
-              <div className="space-y-4">
-                <div className="p-3 bg-accent/10 rounded-full w-fit">
-                  <BarChart3 className="h-6 w-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-card-foreground">Performance Analytics</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Detailed insights into argument quality, logic, and persuasiveness.
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Real-time
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" />
-                    AI-powered
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Lightning Fast */}
-            <div className="md:col-span-2 lg:col-span-1 bg-card border border-border rounded-lg p-6 card-hover">
-              <div className="space-y-3">
-                <div className="p-2 bg-accent/10 rounded-full w-fit">
-                  <Zap className="h-5 w-5 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-card-foreground">Lightning Fast</h3>
-                  <p className="text-muted-foreground text-xs">Instant responses and smooth interactions.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <Button
-              size="lg"
-              className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 py-6 text-lg font-semibold btn-hover-lift"
-            >
-              Explore All Features
-            </Button>
-          </div>
         </div>
       </div>
     </section>

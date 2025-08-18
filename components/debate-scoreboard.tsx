@@ -12,18 +12,41 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { ScoringEngine, type DebateAnalytics } from "@/lib/scoring-engine"
 import type { DebateState } from "@/types/debate"
+import { useModels } from "@/hooks/use-models"
 import { Trophy, Plus, Minus, Brain, Zap, BarChart3, Target, Award } from "lucide-react"
 
 interface DebateScoreboardProps {
   debateState: DebateState
   setDebateState: React.Dispatch<React.SetStateAction<DebateState>>
+  selectedModels: {
+    model1: string
+    model2: string
+  }
 }
 
-export function DebateScoreboard({ debateState, setDebateState }: DebateScoreboardProps) {
+export function DebateScoreboard({ debateState, setDebateState, selectedModels }: DebateScoreboardProps) {
+  const { models } = useModels()
   const [lastScored, setLastScored] = useState<"model1" | "model2" | null>(null)
   const [autoScoring, setAutoScoring] = useState(true)
   const [scoringEngine] = useState(() => new ScoringEngine())
   const [analytics, setAnalytics] = useState<DebateAnalytics | null>(null)
+
+  // Helper function to get model name from ID
+  const getModelName = (modelId: string) => {
+    const model = models.find(m => m.id === modelId)
+    return model?.name || modelId.split('/').pop() || modelId
+  }
+
+  // Get short model names for display
+  const getShortModelName = (modelId: string) => {
+    const name = getModelName(modelId)
+    // Shorten common long names
+    if (name.includes('Claude')) return 'Claude'
+    if (name.includes('GPT')) return name.replace(/^.*GPT/, 'GPT')
+    if (name.includes('Llama')) return 'Llama'
+    if (name.includes('Gemini')) return 'Gemini'
+    return name.split(' ')[0] // First word
+  }
 
   useEffect(() => {
     if (autoScoring && debateState.messages.length > 0) {
@@ -86,17 +109,19 @@ export function DebateScoreboard({ debateState, setDebateState }: DebateScoreboa
   const winner = getWinner()
 
   return (
-    <Card className="h-fit">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Trophy className="w-5 h-5" />
-          Scoring System
-        </CardTitle>
-        <div className="flex items-center space-x-2">
-          <Switch id="auto-scoring" checked={autoScoring} onCheckedChange={setAutoScoring} />
-          <Label htmlFor="auto-scoring" className="text-sm">
-            Auto Score
-          </Label>
+    <Card className="w-full">
+      <CardHeader className="pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Trophy className="w-5 h-5" />
+            Scoring System
+          </CardTitle>
+          <div className="flex items-center space-x-2">
+            <Switch id="auto-scoring" checked={autoScoring} onCheckedChange={setAutoScoring} />
+            <Label htmlFor="auto-scoring" className="text-sm">
+              Auto Score
+            </Label>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -106,126 +131,124 @@ export function DebateScoreboard({ debateState, setDebateState }: DebateScoreboa
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="scores" className="space-y-6">
-            {/* Model 1 Score */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-4 h-4 text-green-600" />
-                  <span className="font-medium text-sm">Claude 3.5 Sonnet</span>
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  Pro
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {!autoScoring && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => adjustScore("model1", -1)}
-                    disabled={debateState.scores.model1 === 0}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Minus className="w-3 h-3" />
-                  </Button>
-                )}
-
-                <div className="flex-1 text-center">
-                  <div
-                    className={`text-2xl font-bold ${lastScored === "model1" ? "text-green-600 animate-pulse" : ""}`}
-                  >
-                    {debateState.scores.model1}
+          <TabsContent value="scores" className="space-y-4">
+            {/* Horizontal Score Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+              {/* Model 1 Score */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-green-600" />
+                    <span className="font-medium text-sm truncate">{getModelName(selectedModels.model1)}</span>
                   </div>
-                  <Progress value={model1Percentage} className="h-2 mt-1" />
-                  {analytics && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Avg: {analytics.averageScores.model1.total}/10
-                    </div>
-                  )}
+                  <Badge variant="secondary" className="text-xs flex-shrink-0">
+                    Pro
+                  </Badge>
                 </div>
 
-                {!autoScoring && (
-                  <Button size="sm" variant="outline" onClick={() => adjustScore("model1", 1)} className="h-8 w-8 p-0">
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* VS Divider */}
-            <div className="text-center text-muted-foreground font-medium">VS</div>
-
-            {/* Model 2 Score */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-red-600" />
-                  <span className="font-medium text-sm">GPT-4o Mini</span>
-                </div>
-                <Badge variant="destructive" className="text-xs">
-                  Con
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {!autoScoring && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => adjustScore("model2", -1)}
-                    disabled={debateState.scores.model2 === 0}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Minus className="w-3 h-3" />
-                  </Button>
-                )}
-
-                <div className="flex-1 text-center">
-                  <div className={`text-2xl font-bold ${lastScored === "model2" ? "text-red-600 animate-pulse" : ""}`}>
-                    {debateState.scores.model2}
-                  </div>
-                  <Progress value={model2Percentage} className="h-2 mt-1" />
-                  {analytics && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Avg: {analytics.averageScores.model2.total}/10
-                    </div>
-                  )}
-                </div>
-
-                {!autoScoring && (
-                  <Button size="sm" variant="outline" onClick={() => adjustScore("model2", 1)} className="h-8 w-8 p-0">
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Winner Display */}
-            {totalScore > 0 && (
-              <div className="pt-4 border-t">
-                <div className="text-center">
-                  <div className="text-sm text-muted-foreground mb-1">Current Leader</div>
-                  {winner === "tie" ? (
-                    <Badge variant="outline" className="text-sm">
-                      Tied Game
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant={winner === "model1" ? "secondary" : "destructive"}
-                      className="text-sm flex items-center gap-1 mx-auto w-fit"
+                  {!autoScoring && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => adjustScore("model1", -1)}
+                      disabled={debateState.scores.model1 === 0}
+                      className="h-8 w-8 p-0 flex-shrink-0"
                     >
-                      <Trophy className="w-3 h-3" />
-                      {winner === "model1" ? "Claude 3.5 Sonnet" : "GPT-4o Mini"}
-                    </Badge>
+                      <Minus className="w-3 h-3" />
+                    </Button>
                   )}
-                  {analytics && analytics.winnerMargin > 0 && (
-                    <div className="text-xs text-muted-foreground mt-1">Margin: {analytics.winnerMargin} points</div>
+
+                  <div className="flex-1 text-center min-w-0">
+                    <div
+                      className={`text-2xl font-bold ${lastScored === "model1" ? "text-green-600 animate-pulse" : ""}`}
+                    >
+                      {debateState.scores.model1}
+                    </div>
+                    <Progress value={model1Percentage} className="h-2 mt-1" />
+                    {analytics && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Avg: {analytics.averageScores.model1.total.toFixed(1)}/10
+                      </div>
+                    )}
+                  </div>
+
+                  {!autoScoring && (
+                    <Button size="sm" variant="outline" onClick={() => adjustScore("model1", 1)} className="h-8 w-8 p-0 flex-shrink-0">
+                      <Plus className="w-3 h-3" />
+                    </Button>
                   )}
                 </div>
               </div>
-            )}
+
+              {/* VS Divider */}
+              <div className="text-center">
+                <div className="text-lg font-bold text-muted-foreground mb-2">VS</div>
+                {totalScore > 0 && (
+                  <div className="text-center">
+                    <div className="text-xs text-muted-foreground mb-1">Leader</div>
+                    {winner === "tie" ? (
+                      <Badge variant="outline" className="text-xs">
+                        Tied
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant={winner === "model1" ? "secondary" : "destructive"}
+                        className="text-xs flex items-center gap-1 mx-auto w-fit"
+                      >
+                        <Trophy className="w-3 h-3" />
+                        {winner === "model1" ? getShortModelName(selectedModels.model1) : getShortModelName(selectedModels.model2)}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Model 2 Score */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-red-600" />
+                    <span className="font-medium text-sm truncate">{getModelName(selectedModels.model2)}</span>
+                  </div>
+                  <Badge variant="destructive" className="text-xs flex-shrink-0">
+                    Con
+                  </Badge>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {!autoScoring && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => adjustScore("model2", -1)}
+                      disabled={debateState.scores.model2 === 0}
+                      className="h-8 w-8 p-0 flex-shrink-0"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                  )}
+
+                  <div className="flex-1 text-center min-w-0">
+                    <div className={`text-2xl font-bold ${lastScored === "model2" ? "text-red-600 animate-pulse" : ""}`}>
+                      {debateState.scores.model2}
+                    </div>
+                    <Progress value={model2Percentage} className="h-2 mt-1" />
+                    {analytics && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Avg: {analytics.averageScores.model2.total.toFixed(1)}/10
+                      </div>
+                    )}
+                  </div>
+
+                  {!autoScoring && (
+                    <Button size="sm" variant="outline" onClick={() => adjustScore("model2", 1)} className="h-8 w-8 p-0 flex-shrink-0">
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-4">
@@ -251,7 +274,7 @@ export function DebateScoreboard({ debateState, setDebateState }: DebateScoreboa
                           }
                           className="text-xs"
                         >
-                          {round.winner === "model1" ? "Claude" : round.winner === "model2" ? "GPT" : "Tie"}
+                          {round.winner === "model1" ? getShortModelName(selectedModels.model1) : round.winner === "model2" ? getShortModelName(selectedModels.model2) : "Tie"}
                         </Badge>
                       </div>
                     ))}
@@ -267,8 +290,8 @@ export function DebateScoreboard({ debateState, setDebateState }: DebateScoreboa
                   <div className="space-y-2 text-xs">
                     <div className="grid grid-cols-3 gap-1 text-center font-medium">
                       <span></span>
-                      <span className="text-green-600">Claude</span>
-                      <span className="text-red-600">GPT</span>
+                      <span className="text-green-600">{getShortModelName(selectedModels.model1)}</span>
+                      <span className="text-red-600">{getShortModelName(selectedModels.model2)}</span>
                     </div>
                     {Object.entries(analytics.averageScores.model1)
                       .filter(([key]) => key !== "total")
@@ -295,7 +318,7 @@ export function DebateScoreboard({ debateState, setDebateState }: DebateScoreboa
                       {analytics.strongestArguments.model1 && (
                         <div className="p-2 bg-green-50 rounded border-green-200 border">
                           <div className="font-medium text-green-700">
-                            Claude - Round {analytics.strongestArguments.model1.round}
+                            {getShortModelName(selectedModels.model1)} - Round {analytics.strongestArguments.model1.round}
                           </div>
                           <div className="text-green-600">
                             Score: {analytics.strongestArguments.model1.totalScore}/10
@@ -305,7 +328,7 @@ export function DebateScoreboard({ debateState, setDebateState }: DebateScoreboa
                       {analytics.strongestArguments.model2 && (
                         <div className="p-2 bg-red-50 rounded border-red-200 border">
                           <div className="font-medium text-red-700">
-                            GPT - Round {analytics.strongestArguments.model2.round}
+                            {getShortModelName(selectedModels.model2)} - Round {analytics.strongestArguments.model2.round}
                           </div>
                           <div className="text-red-600">Score: {analytics.strongestArguments.model2.totalScore}/10</div>
                         </div>

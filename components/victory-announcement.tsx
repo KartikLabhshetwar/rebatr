@@ -4,20 +4,42 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Trophy, Sparkles, Brain, Zap, X, BarChart3 } from "lucide-react"
+import { Trophy, Sparkles, Brain, Zap, X, BarChart3, RotateCcw } from "lucide-react"
 import { WinnerAnalysis } from "./winner-analysis"
 import type { DebateState } from "@/types/debate"
+import { useModels } from "@/hooks/use-models"
 
 interface VictoryAnnouncementProps {
   debateState: DebateState
   winner: "model1" | "model2" | "tie" | null
   show: boolean
   onClose?: () => void
+  onRestart?: () => void
+  selectedModels?: {
+    model1: string
+    model2: string
+  }
 }
 
-export function VictoryAnnouncement({ debateState, winner, show, onClose }: VictoryAnnouncementProps) {
+export function VictoryAnnouncement({ debateState, winner, show, onClose, onRestart, selectedModels }: VictoryAnnouncementProps) {
+  const { models } = useModels()
   const [isVisible, setIsVisible] = useState(false)
   const [showAnalysis, setShowAnalysis] = useState(false)
+
+  // Helper function to get model name from ID
+  const getModelName = (modelId: string) => {
+    const model = models.find(m => m.id === modelId)
+    return model?.name || modelId.split('/').pop() || modelId
+  }
+
+  const getShortModelName = (modelId: string) => {
+    const name = getModelName(modelId)
+    if (name.includes('Claude')) return 'Claude'
+    if (name.includes('GPT')) return name.replace(/^.*GPT/, 'GPT')
+    if (name.includes('Llama')) return 'Llama'
+    if (name.includes('Gemini')) return 'Gemini'
+    return name.split(' ')[0]
+  }
 
   useEffect(() => {
     if (show) {
@@ -42,7 +64,9 @@ export function VictoryAnnouncement({ debateState, winner, show, onClose }: Vict
       }
     }
 
-    const modelName = winner === "model1" ? "Claude 3.5 Sonnet" : "GPT-4o Mini"
+    const modelName = selectedModels 
+      ? (winner === "model1" ? getModelName(selectedModels.model1) : getModelName(selectedModels.model2))
+      : (winner === "model1" ? "Model 1" : "Model 2")
     const modelIcon =
       winner === "model1" ? (
         <Brain className="w-8 sm:w-12 h-8 sm:h-12 text-white" />
@@ -112,8 +136,8 @@ export function VictoryAnnouncement({ debateState, winner, show, onClose }: Vict
                 <div className="text-center">
                   <div className="text-2xl sm:text-3xl font-bold text-blue-600">{debateState.scores.model1}</div>
                   <div className="text-xs sm:text-sm text-muted-foreground">
-                    <span className="hidden sm:inline">Claude 3.5 Sonnet</span>
-                    <span className="sm:hidden">Claude</span>
+                    <span className="hidden sm:inline">{selectedModels ? getModelName(selectedModels.model1) : "Model 1"}</span>
+                    <span className="sm:hidden">{selectedModels ? getShortModelName(selectedModels.model1) : "M1"}</span>
                   </div>
                 </div>
                 <div className="flex items-center">
@@ -122,8 +146,8 @@ export function VictoryAnnouncement({ debateState, winner, show, onClose }: Vict
                 <div className="text-center">
                   <div className="text-2xl sm:text-3xl font-bold text-green-600">{debateState.scores.model2}</div>
                   <div className="text-xs sm:text-sm text-muted-foreground">
-                    <span className="hidden sm:inline">GPT-4o Mini</span>
-                    <span className="sm:hidden">GPT</span>
+                    <span className="hidden sm:inline">{selectedModels ? getModelName(selectedModels.model2) : "Model 2"}</span>
+                    <span className="sm:hidden">{selectedModels ? getShortModelName(selectedModels.model2) : "M2"}</span>
                   </div>
                 </div>
               </div>
@@ -148,6 +172,16 @@ export function VictoryAnnouncement({ debateState, winner, show, onClose }: Vict
                   <BarChart3 className="w-4 h-4" />
                   View Analysis
                 </Button>
+                {onRestart && (
+                  <Button 
+                    onClick={onRestart} 
+                    variant="outline" 
+                    className="flex items-center gap-2 w-full sm:w-auto bg-transparent"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    New Debate
+                  </Button>
+                )}
                 <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto bg-transparent">
                   Close
                 </Button>

@@ -44,7 +44,7 @@ export function HeroSection() {
             <Button
               variant="outline"
               size="lg"
-              className="border-border hover:bg-muted px-8 py-6 text-lg font-semibold btn-hover-lift bg-transparent"
+              className="border-border hover:bg-muted hover:text-black px-8 py-6 text-lg font-semibold btn-hover-lift bg-transparent"
               asChild
             >
               <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">

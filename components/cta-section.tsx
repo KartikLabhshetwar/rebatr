@@ -47,7 +47,7 @@ export function CTASection() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="border-border hover:bg-muted px-8 py-6 text-lg font-semibold btn-hover-lift bg-transparent"
+                  className="border-border hover:bg-muted hover:text-black px-8 py-6 text-lg font-semibold btn-hover-lift bg-transparent"
                   asChild
                 >
                   <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
@@ -70,22 +70,6 @@ export function CTASection() {
                 <div className="flex items-center justify-center gap-3">
                   <CheckCircle className="h-5 w-5 text-accent flex-shrink-0" />
                   <span className="text-sm text-muted-foreground">Export results instantly</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-6 pt-6">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <span>1,000+ debates created</span>
-                </div>
-
-                <div className="w-px h-4 bg-border"></div>
-
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="w-4 h-4 bg-accent rounded-full"></div>
-                  ))}
-                  <span className="ml-2 text-sm text-muted-foreground">Loved by users</span>
                 </div>
               </div>
             </div>

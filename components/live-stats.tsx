@@ -4,18 +4,30 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { DebateState } from "@/types/debate"
 import { Clock, MessageSquare, Zap, TrendingUp } from "lucide-react"
+import { useModels } from "@/hooks/use-models"
 
 interface LiveStatsProps {
   debateState: DebateState
   isGenerating: boolean
   currentSpeaker: "model1" | "model2" | null
+  selectedModels?: {
+    model1: string
+    model2: string
+  }
 }
 
-export function LiveStats({ debateState, isGenerating, currentSpeaker }: LiveStatsProps) {
+export function LiveStats({ debateState, isGenerating, currentSpeaker, selectedModels }: LiveStatsProps) {
+  const { models } = useModels()
   const totalWords = debateState.messages.reduce((sum, msg) => sum + msg.content.split(" ").length, 0)
   const avgWordsPerMessage = debateState.messages.length > 0 ? Math.round(totalWords / debateState.messages.length) : 0
   const debateStartTime = debateState.messages.length > 0 ? debateState.messages[0].timestamp : Date.now()
   const elapsedMinutes = Math.floor((Date.now() - debateStartTime) / 60000)
+
+  // Helper function to get model name from ID
+  const getModelName = (modelId: string) => {
+    const model = models.find(m => m.id === modelId)
+    return model?.name || modelId.split('/').pop() || modelId
+  }
 
   return (
     <Card className="mb-4">
@@ -72,7 +84,10 @@ export function LiveStats({ debateState, isGenerating, currentSpeaker }: LiveSta
           <div className="mt-3 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-muted rounded-full text-xs">
               <div className="animate-spin rounded-full h-3 w-3 border border-current border-t-transparent"></div>
-              {currentSpeaker === "model1" ? "Claude 3.5 Sonnet" : "GPT-4o Mini"} is thinking...
+              {selectedModels 
+                ? (currentSpeaker === "model1" ? getModelName(selectedModels.model1) : getModelName(selectedModels.model2))
+                : (currentSpeaker === "model1" ? "Model 1" : "Model 2")
+              } is thinking...
             </div>
           </div>
         )}

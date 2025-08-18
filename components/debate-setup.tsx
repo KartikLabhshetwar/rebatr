@@ -7,9 +7,11 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ApiKeyManager } from "./api-key-manager"
 import { useApiKey } from "@/hooks/use-api-key"
-import { Settings, Brain, ArrowLeft, Play } from "lucide-react"
+import { useModels } from "@/hooks/use-models"
+import { Settings, Brain, ArrowLeft, Play, Loader2, AlertTriangle, Zap } from "lucide-react"
 
 interface DebateSetupProps {
   onDebateStart: (topic: string, model1: string, model2: string) => void
@@ -17,14 +19,7 @@ interface DebateSetupProps {
   apiKey: string
 }
 
-const AVAILABLE_MODELS = [
-  { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", tier: "premium" },
-  { id: "openai/gpt-4o", name: "GPT-4o", provider: "OpenAI", tier: "premium" },
-  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", tier: "standard" },
-  { id: "meta-llama/llama-3.1-8b-instruct:free", name: "Llama 3.1 8B", provider: "Meta", tier: "free" },
-  { id: "microsoft/wizardlm-2-8x22b", name: "WizardLM-2 8x22B", provider: "Microsoft", tier: "premium" },
-  { id: "google/gemini-pro-1.5", name: "Gemini Pro 1.5", provider: "Google", tier: "standard" },
-]
+
 
 const SAMPLE_TOPICS = [
   "Artificial Intelligence will create more jobs than it destroys",
@@ -37,6 +32,7 @@ const SAMPLE_TOPICS = [
 
 export function DebateSetup({ onDebateStart, onBack, apiKey }: DebateSetupProps) {
   const { saveApiKey } = useApiKey()
+  const { models, isLoading: modelsLoading, error: modelsError } = useModels()
   const [topic, setTopic] = useState("")
   const [model1, setModel1] = useState("")
   const [model2, setModel2] = useState("")
@@ -121,87 +117,136 @@ export function DebateSetup({ onDebateStart, onBack, apiKey }: DebateSetupProps)
             </div>
           </div>
 
-          {/* Model Selection */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-base font-medium">Model 1 (Pro Position)</Label>
-              <Select value={model1} onValueChange={setModel1}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select first model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AVAILABLE_MODELS.map((model) => (
-                    <SelectItem key={model.id} value={model.id} disabled={model.id === model2}>
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                          <div className="font-medium">{model.name}</div>
-                          <div className="text-xs text-muted-foreground">{model.provider}</div>
-                        </div>
-                        <Badge
-                          variant={
-                            model.tier === "free" ? "secondary" : model.tier === "premium" ? "default" : "outline"
-                          }
-                          className="ml-2 text-xs"
-                        >
-                          {model.tier}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Models Loading State */}
+          {modelsLoading && (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              <span className="text-muted-foreground">Loading available models...</span>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label className="text-base font-medium">Model 2 (Con Position)</Label>
-              <Select value={model2} onValueChange={setModel2}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select second model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AVAILABLE_MODELS.map((model) => (
-                    <SelectItem key={model.id} value={model.id} disabled={model.id === model1}>
-                      <div className="flex items-center justify-between w-full">
-                        <div>
-                          <div className="font-medium">{model.name}</div>
-                          <div className="text-xs text-muted-foreground">{model.provider}</div>
+          {/* Models Error State */}
+          {modelsError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {modelsError}. Using fallback models.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Model Selection */}
+          {!modelsLoading && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-base font-medium">Model 1 (Pro Position)</Label>
+                <Select value={model1} onValueChange={setModel1}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select first model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((model) => (
+                      <SelectItem key={model.id} value={model.id} disabled={model.id === model2}>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{model.name}</div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <span>{model.provider}</span>
+                              {model.tier === "free" && <Zap className="w-3 h-3 text-green-500" />}
+                            </div>
+                          </div>
+                          <Badge
+                            variant={
+                              model.tier === "free" ? "secondary" : model.tier === "premium" ? "default" : "outline"
+                            }
+                            className="ml-2 text-xs flex-shrink-0"
+                          >
+                            {model.tier}
+                          </Badge>
                         </div>
-                        <Badge
-                          variant={
-                            model.tier === "free" ? "secondary" : model.tier === "premium" ? "default" : "outline"
-                          }
-                          className="ml-2 text-xs"
-                        >
-                          {model.tier}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-base font-medium">Model 2 (Con Position)</Label>
+                <Select value={model2} onValueChange={setModel2}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select second model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((model) => (
+                      <SelectItem key={model.id} value={model.id} disabled={model.id === model1}>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{model.name}</div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <span>{model.provider}</span>
+                              {model.tier === "free" && <Zap className="w-3 h-3 text-green-500" />}
+                            </div>
+                          </div>
+                          <Badge
+                            variant={
+                              model.tier === "free" ? "secondary" : model.tier === "premium" ? "default" : "outline"
+                            }
+                            className="ml-2 text-xs flex-shrink-0"
+                          >
+                            {model.tier}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Selected Models Preview */}
-          {model1 && model2 && (
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <h4 className="font-medium mb-3">Debate Matchup:</h4>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <div>
-                    <div className="font-medium">{AVAILABLE_MODELS.find((m) => m.id === model1)?.name} (Pro)</div>
-                    <div className="text-muted-foreground">Arguing FOR the topic</div>
+          {model1 && model2 && !modelsLoading && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <h4 className="font-medium mb-3">Debate Matchup:</h4>
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div>
+                      <div className="font-medium">{models.find((m) => m.id === model1)?.name} (Pro)</div>
+                      <div className="text-muted-foreground">Arguing FOR the topic</div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <div>
-                    <div className="font-medium">{AVAILABLE_MODELS.find((m) => m.id === model2)?.name} (Con)</div>
-                    <div className="text-muted-foreground">Arguing AGAINST the topic</div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <div>
+                      <div className="font-medium">{models.find((m) => m.id === model2)?.name} (Con)</div>
+                      <div className="text-muted-foreground">Arguing AGAINST the topic</div>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Rate Limit Warning for Free Models */}
+              {(model1.includes('free') || model2.includes('free')) && (
+                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h5 className="font-medium text-yellow-800 mb-1">Free Model Rate Limits</h5>
+                      <p className="text-sm text-yellow-700 mb-2">
+                        Free models have strict rate limits. Debates are optimized with:
+                      </p>
+                      <ul className="text-xs text-yellow-600 space-y-1">
+                        <li>• 3 rounds instead of 5 (6 total messages)</li>
+                        <li>• 15+ second delays between requests</li>
+                        <li>• Automatic retry with exponential backoff</li>
+                        <li>• Manual mode recommended for testing</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

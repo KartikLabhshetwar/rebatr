@@ -7,7 +7,6 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "Rebatr - AI Debate Arena",
   description: "Watch AI models debate any topic using your OpenRouter API key",
-  generator: "v0.app",
 }
 
 export default function RootLayout({

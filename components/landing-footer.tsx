@@ -14,11 +14,6 @@ export function LandingFooter() {
                 The future of AI debates. Watch intelligent models engage in thoughtful discussions on any topic.
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Built with</span>
-              <Heart className="h-3 w-3 text-red-500" />
-              <span>using Next.js & OpenRouter</span>
-            </div>
           </div>
 
           {/* Product Links */}
@@ -108,17 +103,17 @@ export function LandingFooter() {
         {/* Bottom Section */}
         <div className="pt-8 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">© 2024 Rebatr. All rights reserved.</div>
+            <div className="text-sm text-muted-foreground">© {new Date().getFullYear()} Rebatr. All rights reserved.</div>
 
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-accent/10" asChild>
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                <a href="https://github.com/KartikLabhshetwar/rebatr" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
                   <Github className="h-4 w-4" />
                 </a>
               </Button>
 
               <Button variant="ghost" size="sm" className="p-2 h-auto hover:bg-accent/10" asChild>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
+                <a href="https://x.com/code_kartik" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
                   <Twitter className="h-4 w-4" />
                 </a>
               </Button>

@@ -50,14 +50,26 @@ Provide a compelling, well-structured argument that advances your position.`
   }
 
   private getRoundContext(round: number, maxRounds: number): string {
-    if (round === 1) {
-      return "ROUND 1: Opening statements - Present your strongest initial argument."
-    } else if (round === maxRounds) {
-      return "FINAL ROUND: Closing arguments - Summarize your position and deliver your most compelling points."
-    } else if (round <= Math.ceil(maxRounds / 2)) {
-      return `ROUND ${round}: Development phase - Build upon your arguments with evidence and examples.`
+    if (maxRounds <= 3) {
+      // Optimized for 3-round debates
+      if (round === 1) {
+        return "ROUND 1: Opening statements - Present your strongest initial argument with key evidence."
+      } else if (round === 2) {
+        return "ROUND 2: Rebuttal and reinforcement - Address opponent's points while strengthening your position."
+      } else {
+        return "FINAL ROUND: Closing arguments - Deliver your most compelling summary and final points."
+      }
     } else {
-      return `ROUND ${round}: Rebuttal phase - Address opponent's arguments while strengthening your position.`
+      // Original logic for longer debates
+      if (round === 1) {
+        return "ROUND 1: Opening statements - Present your strongest initial argument."
+      } else if (round === maxRounds) {
+        return "FINAL ROUND: Closing arguments - Summarize your position and deliver your most compelling points."
+      } else if (round <= Math.ceil(maxRounds / 2)) {
+        return `ROUND ${round}: Development phase - Build upon your arguments with evidence and examples.`
+      } else {
+        return `ROUND ${round}: Rebuttal phase - Address opponent's arguments while strengthening your position.`
+      }
     }
   }
 

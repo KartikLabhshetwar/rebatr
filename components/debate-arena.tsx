@@ -24,9 +24,14 @@ export function DebateArena() {
     topic: "",
     messages: [],
     currentRound: 0,
-    maxRounds: 5,
+    maxRounds: 3, // Reduced from 5 to 3 rounds
     isActive: false,
     scores: { model1: 0, model2: 0 },
+  })
+
+  const [selectedModels, setSelectedModels] = useState<{model1: string, model2: string}>({
+    model1: "",
+    model2: "",
   })
 
   const [currentStep, setCurrentStep] = useState<"api-key" | "setup" | "debate">("api-key")
@@ -47,6 +52,7 @@ export function DebateArena() {
   }
 
   const handleDebateStart = (topic: string, model1: string, model2: string) => {
+    setSelectedModels({ model1, model2 })
     setDebateState((prev) => ({
       ...prev,
       topic,
@@ -59,11 +65,12 @@ export function DebateArena() {
   }
 
   const handleDebateReset = () => {
+    setSelectedModels({ model1: "", model2: "" })
     setDebateState({
       topic: "",
       messages: [],
       currentRound: 0,
-      maxRounds: 5,
+      maxRounds: 3, // Reduced from 5 to 3 rounds
       isActive: false,
       scores: { model1: 0, model2: 0 },
     })
@@ -131,6 +138,7 @@ export function DebateArena() {
             apiKey={apiKey}
             onReset={handleDebateReset}
             settings={settings}
+            selectedModels={selectedModels}
           />
         )}
 

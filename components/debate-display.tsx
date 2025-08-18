@@ -21,6 +21,7 @@ import { HelpDialog } from "./help-dialog"
 import { Confetti } from "./confetti"
 import { VictoryAnnouncement } from "./victory-announcement"
 import type { DebateState, DebateMessage as DebateMessageType } from "@/types/debate"
+import { useModels } from "@/hooks/use-models"
 import { Play, Pause, RotateCcw, Trophy, Clock, Zap, Settings, AlertTriangle } from "lucide-react"
 
 interface DebateDisplayProps {
@@ -28,17 +29,26 @@ interface DebateDisplayProps {
   setDebateState: React.Dispatch<React.SetStateAction<DebateState>>
   apiKey: string
   onReset: () => void
+  settings?: any
+  selectedModels: {
+    model1: string
+    model2: string
+  }
 }
 
-export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: DebateDisplayProps) {
+export function DebateDisplay({ debateState, setDebateState, apiKey, onReset, selectedModels }: DebateDisplayProps) {
+  const { models } = useModels()
   const [isGenerating, setIsGenerating] = useState(false)
   const [currentSpeaker, setCurrentSpeaker] = useState<"model1" | "model2" | null>(null)
   const [autoMode, setAutoMode] = useState(false)
-  const [autoDelay, setAutoDelay] = useState(3000)
-  const [selectedModels, setSelectedModels] = useState({
-    model1: "anthropic/claude-3.5-sonnet",
-    model2: "openai/gpt-4o-mini",
-  })
+  const [autoDelay, setAutoDelay] = useState(12000) // 12 seconds to prevent rate limiting
+
+  // Helper function to get model name from ID
+  const getModelName = (modelId: string) => {
+    const model = models.find(m => m.id === modelId)
+    return model?.name || modelId.split('/').pop() || modelId
+  }
+
   const [showTypingIndicator, setShowTypingIndicator] = useState(false)
   const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
@@ -46,11 +56,13 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
   const [showVictory, setShowVictory] = useState(false)
   const [confettiTrigger, setConfettiTrigger] = useState(false)
   const [winner, setWinner] = useState<"model1" | "model2" | "tie" | null>(null)
+  const [hasShownVictory, setHasShownVictory] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const autoTimeoutRef = useRef<NodeJS.Timeout>()
+  const autoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const progress = (debateState.currentRound / debateState.maxRounds) * 100
-  const isDebateComplete = debateState.currentRound >= debateState.maxRounds
+  const currentRound = Math.ceil(debateState.messages.length / 2)
+  const progress = (currentRound / debateState.maxRounds) * 100
+  const isDebateComplete = currentRound >= debateState.maxRounds
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -91,7 +103,7 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
   }, [autoMode, debateState.isActive, isDebateComplete, isGenerating, debateState.messages, error])
 
   useEffect(() => {
-    if (isDebateComplete && debateState.messages.length > 0 && !showVictory) {
+    if (isDebateComplete && debateState.messages.length > 0 && !hasShownVictory) {
       const model1Score = debateState.scores?.model1 || 0
       const model2Score = debateState.scores?.model2 || 0
 
@@ -105,6 +117,7 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
       }
 
       setWinner(calculatedWinner)
+      setHasShownVictory(true)
 
       setTimeout(() => {
         setConfettiTrigger(true)
@@ -114,7 +127,7 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
         setShowVictory(true)
       }, 1500)
     }
-  }, [isDebateComplete, debateState.messages.length, debateState.scores, showVictory])
+  }, [isDebateComplete, debateState.messages.length, debateState.scores, hasShownVictory])
 
   const generateNextArgument = async (speaker: "model1" | "model2") => {
     setIsGenerating(true)
@@ -155,7 +168,7 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
             speaker,
             content: data.response,
             timestamp: Date.now(),
-            round: debateState.currentRound + (speaker === "model1" ? 1 : 0),
+            round: Math.ceil((debateState.messages.length + 1) / 2),
           }
 
           setDebateState((prev) => ({
@@ -172,13 +185,40 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
     } catch (error) {
       console.error("Error generating argument:", error)
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-      setError(errorMessage)
+      
+      // Provide user-friendly error messages
+      let userFriendlyMessage = errorMessage
+      if (errorMessage.includes('Rate limit')) {
+        userFriendlyMessage = "Rate limit reached. The debate will continue automatically in a moment. You can also try manual mode."
+        // Don't stop auto mode for rate limiting, just pause briefly
+        if (autoMode) {
+          setTimeout(() => {
+            if (autoMode && !isDebateComplete) {
+              startNextRound()
+            }
+          }, 20000) // Wait 20 seconds before retrying in auto mode
+        }
+      } else if (errorMessage.includes('Invalid API key')) {
+        userFriendlyMessage = "Invalid API key. Please check your OpenRouter API key in settings."
+        setAutoMode(false)
+      } else if (errorMessage.includes('Insufficient credits')) {
+        userFriendlyMessage = "Insufficient credits in your OpenRouter account. Please add credits to continue."
+        setAutoMode(false)
+      } else {
+        // For other errors, allow retry but don't auto-continue
+        setAutoMode(false)
+      }
+      
+      setError(userFriendlyMessage)
 
-      setDebateState((prev) => ({
-        ...prev,
-        isActive: false,
-      }))
-      setAutoMode(false)
+      // Only set debate as inactive for non-rate-limit errors
+      if (!errorMessage.includes('Rate limit')) {
+        setDebateState((prev) => ({
+          ...prev,
+          isActive: false,
+        }))
+        setAutoMode(false)
+      }
     } finally {
       setTimeout(() => {
         setIsGenerating(false)
@@ -235,6 +275,20 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
     setDebateState((prev) => ({ ...prev, isActive: true }))
   }
 
+  const handleReset = () => {
+    // Reset all victory-related state
+    setShowVictory(false)
+    setConfettiTrigger(false)
+    setHasShownVictory(false)
+    setWinner(null)
+    setError(null)
+    setRetryCount(0)
+    setAutoMode(false)
+    
+    // Call the parent reset function
+    onReset()
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 px-4 sm:px-0">
       <Confetti trigger={confettiTrigger} duration={4000} particleCount={150} />
@@ -243,6 +297,8 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
         winner={winner}
         show={showVictory}
         onClose={() => setShowVictory(false)}
+        onRestart={handleReset}
+        selectedModels={selectedModels}
       />
 
       <Card>
@@ -253,7 +309,7 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs sm:text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Round {debateState.currentRound} of {debateState.maxRounds}
+                  Round {currentRound || 1} of {debateState.maxRounds}
                 </div>
                 <div className="flex items-center gap-1">
                   <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -314,7 +370,7 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
                     )}
                   </>
                 )}
-                <Button onClick={onReset} variant="outline" size="sm" className="flex-1 sm:flex-initial bg-transparent">
+                <Button onClick={handleReset} variant="outline" size="sm" className="flex-1 sm:flex-initial bg-transparent">
                   <RotateCcw className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">New Debate</span>
                   <span className="sm:hidden">New</span>
@@ -326,7 +382,7 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
         </CardHeader>
       </Card>
 
-      <LiveStats debateState={debateState} isGenerating={isGenerating} currentSpeaker={currentSpeaker} />
+      <LiveStats debateState={debateState} isGenerating={isGenerating} currentSpeaker={currentSpeaker} selectedModels={selectedModels} />
 
       {error && (
         <Alert variant="destructive">
@@ -371,78 +427,85 @@ export function DebateDisplay({ debateState, setDebateState, apiKey, onReset }: 
                 </Label>
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">
-                {autoMode ? "Debate running automatically" : "Manual control"}
+                {autoMode ? (
+                  <div className="space-y-1">
+                    <div>Debate running automatically</div>
+                    <div className="text-xs opacity-75">
+                      {autoDelay/1000}s delay between rounds to prevent rate limiting
+                    </div>
+                  </div>
+                ) : (
+                  "Manual control - click 'Next Round' when ready"
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-6">
-        {/* Main debate area - full width on mobile, 3/4 on desktop */}
-        <div className="lg:col-span-3">
-          <Card className="h-[400px] sm:h-[500px] lg:h-[600px]">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base sm:text-lg">Debate Arguments</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[320px] sm:h-[420px] lg:h-[500px] px-4 sm:px-6" ref={scrollAreaRef}>
-                <div className="space-y-3 sm:space-y-4 pb-4">
-                  {debateState.messages.length === 0 ? (
-                    <div className="text-center py-8 sm:py-12 text-muted-foreground">
-                      <div className="text-base sm:text-lg font-medium mb-2">Ready to start the debate!</div>
-                      <p className="text-sm sm:text-base">Click "Next Round" or enable "Auto Mode" to begin.</p>
-                    </div>
-                  ) : (
-                    debateState.messages.map((message, index) => (
-                      <div key={message.id} className={newMessageIds.has(message.id) ? "animate-slide-in-up" : ""}>
-                        <DebateMessage message={message} />
-                        {index < debateState.messages.length - 1 && <Separator className="my-3 sm:my-4" />}
-                      </div>
-                    ))
-                  )}
-                  {showTypingIndicator && currentSpeaker && (
-                    <>
-                      {debateState.messages.length > 0 && <Separator className="my-3 sm:my-4" />}
-                      <TypingIndicator
-                        speaker={currentSpeaker}
-                        modelName={currentSpeaker === "model1" ? "Claude 3.5 Sonnet" : "GPT-4o Mini"}
-                      />
-                    </>
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+      {/* Horizontal Scoreboard */}
+      <div className="mb-6">
+        <DebateScoreboard debateState={debateState} setDebateState={setDebateState} selectedModels={selectedModels} />
+      </div>
 
-          <div className="flex justify-center mt-4">
-            {!isDebateComplete && !autoMode && (
-              <Button
-                onClick={startNextRound}
-                disabled={isGenerating || !debateState.isActive || !!error}
-                size="lg"
-                className="w-full sm:w-auto"
-              >
-                {isGenerating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                    <span className="hidden sm:inline">Generating Arguments...</span>
-                    <span className="sm:hidden">Generating...</span>
-                  </>
+      {/* Main debate area - full width */}
+      <div className="space-y-4">
+        <Card className="h-[500px] sm:h-[600px] lg:h-[700px]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg sm:text-xl">Debate Arguments</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[400px] sm:h-[500px] lg:h-[600px] px-4 sm:px-6" ref={scrollAreaRef}>
+              <div className="space-y-4 sm:space-y-6 pb-4">
+                {debateState.messages.length === 0 ? (
+                  <div className="text-center py-12 sm:py-16 text-muted-foreground">
+                    <div className="text-lg sm:text-xl font-medium mb-3">Ready to start the debate!</div>
+                    <p className="text-base sm:text-lg">Click "Next Round" or enable "Auto Mode" to begin.</p>
+                  </div>
                 ) : (
+                  debateState.messages.map((message, index) => (
+                    <div key={message.id} className={newMessageIds.has(message.id) ? "animate-slide-in-up" : ""}>
+                      <DebateMessage message={message} selectedModels={selectedModels} />
+                      {index < debateState.messages.length - 1 && <Separator className="my-4 sm:my-6" />}
+                    </div>
+                  ))
+                )}
+                {showTypingIndicator && currentSpeaker && (
                   <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Next Round
+                    {debateState.messages.length > 0 && <Separator className="my-4 sm:my-6" />}
+                    <TypingIndicator
+                      speaker={currentSpeaker}
+                      modelName={currentSpeaker === "model1" ? getModelName(selectedModels.model1) : getModelName(selectedModels.model2)}
+                    />
                   </>
                 )}
-              </Button>
-            )}
-          </div>
-        </div>
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
-        {/* Scoreboard - full width on mobile, 1/4 on desktop */}
-        <div className="lg:col-span-1">
-          <DebateScoreboard debateState={debateState} setDebateState={setDebateState} />
+        <div className="flex justify-center">
+          {!isDebateComplete && !autoMode && (
+            <Button
+              onClick={startNextRound}
+              disabled={isGenerating || !debateState.isActive || !!error}
+              size="lg"
+              className="w-full sm:w-auto px-8 py-3"
+            >
+              {isGenerating ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-3"></div>
+                  <span className="hidden sm:inline">Generating Arguments...</span>
+                  <span className="sm:hidden">Generating...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5 mr-2" />
+                  Next Round
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>

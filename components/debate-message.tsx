@@ -7,10 +7,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import type { DebateMessage as DebateMessageType } from "@/types/debate"
+import { useModels } from "@/hooks/use-models"
 import { Brain, Zap, ChevronDown, BarChart3 } from "lucide-react"
 
 interface DebateMessageProps {
   message: DebateMessageType
+  selectedModels?: {
+    model1: string
+    model2: string
+  }
   score?: {
     totalScore: number
     criteria: {
@@ -24,15 +29,26 @@ interface DebateMessageProps {
   }
 }
 
-export function DebateMessage({ message, score }: DebateMessageProps) {
+export function DebateMessage({ message, selectedModels, score }: DebateMessageProps) {
+  const { models } = useModels()
   const [showScore, setShowScore] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const isModel1 = message.speaker === "model1"
-  const modelName = isModel1 ? "Claude 3.5 Sonnet" : "GPT-4o Mini"
+  
+  // Helper function to get model name from ID
+  const getModelName = (modelId: string) => {
+    const model = models.find(m => m.id === modelId)
+    return model?.name || modelId.split('/').pop() || modelId
+  }
+  
+  const modelName = selectedModels 
+    ? (isModel1 ? getModelName(selectedModels.model1) : getModelName(selectedModels.model2))
+    : (isModel1 ? "Model 1" : "Model 2")
+  
   const stance = isModel1 ? "Pro" : "Con"
-  const stanceColor = isModel1 ? "bg-blue-500" : "bg-green-500"
-  const bgColor = isModel1 ? "bg-blue-50 border-blue-200" : "bg-green-50 border-green-200"
-  const avatarColor = isModel1 ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+  const stanceColor = isModel1 ? "bg-green-500" : "bg-red-500"
+  const bgColor = isModel1 ? "bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800" : "bg-red-50 border-red-200 dark:bg-red-900/10 dark:border-red-800"
+  const avatarColor = isModel1 ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400"
 
   return (
     <div
@@ -76,10 +92,10 @@ export function DebateMessage({ message, score }: DebateMessageProps) {
         </div>
 
         <Card
-          className={`${bgColor} transition-all duration-300 hover:shadow-md ${isHovered ? "shadow-lg" : "shadow-sm"}`}
+          className={`${bgColor} transition-all duration-300 hover:shadow-md ${isHovered ? "shadow-lg" : "shadow-sm"} border`}
         >
-          <CardContent className="p-3 sm:p-4">
-            <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap transition-colors duration-200">
+          <CardContent className="p-4 sm:p-6">
+            <p className="text-sm sm:text-base lg:text-lg leading-relaxed sm:leading-loose whitespace-pre-wrap transition-colors duration-200 font-medium text-foreground/90">
               {message.content}
             </p>
 
